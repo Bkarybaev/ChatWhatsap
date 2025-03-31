@@ -1,0 +1,53 @@
+plugins {
+    id 'java'
+    id 'org.springframework.boot' version '3.4.4'
+    id 'io.spring.dependency-management' version '1.1.7'
+}
+
+group = 'java16'
+version = '0.0.1-SNAPSHOT'
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
+configurations {
+    compileOnly {
+        extendsFrom annotationProcessor
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+dependencies {
+    implementation 'org.springframework.boot:spring-boot-starter'
+    implementation 'org.springframework.boot:spring-boot-starter-websocket'
+    implementation 'org.springframework.boot:spring-boot-starter-security'  // Эгер security керек болсо
+    implementation 'org.springframework.boot:spring-boot-starter-web'  // Web MVC
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'  // JPA & PostgreSQL үчүн
+    implementation 'org.postgresql:postgresql'  // PostgreSQL драйвери
+    implementation 'com.auth0:java-jwt:4.4.0'  // JWT үчүн
+    implementation 'org.springframework.boot:spring-boot-starter-thymeleaf'  // HTML шаблондор үчүн (эгер керектелсе)
+
+        implementation 'io.jsonwebtoken:jjwt-api:0.12.6'
+        implementation 'io.jsonwebtoken:jjwt-impl:0.12.6'
+        implementation 'io.jsonwebtoken:jjwt-jackson:0.12.6' // JSON парсинг үчүн керек
+
+    // WebSocketтин фронт үчүн Jackson
+    implementation 'com.fasterxml.jackson.core:jackson-databind'
+
+    // Жөнөкөй тесттер үчүн
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+
+    // Lombok (эгер сиз аны колдонсоңуз)
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+}

@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WebRTC Video Chat</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.5.1/sockjs.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      background-color: #f0f0f0;
+    }
+
+    h2 {
+      text-align: center;
+    }
+
+    .video-container {
+      display: flex;
+      justify-content: space-around;
+      margin-top: 20px;
+    }
+
+    video {
+      width: 45%;
+      border: 2px solid #000;
+      background-color: #000;
+    }
+
+    .group-section {
+      margin-top: 40px;
+      text-align: center;
+    }
+
+    .group-button {
+      background-color: #4CAF50;
+      color: white;
+      padding: 10px 20px;
+      margin: 5px;
+      border: none;
+      cursor: pointer;
+    }
+
+    .group-button:hover {
+      background-color: #45a049;
+    }
+
+    .button-container {
+      text-align: center;
+      margin-top: 20px;
+    }
+
+    input {
+      padding: 8px;
+      margin: 10px;
+      width: 200px;
+    }
+
+    button {
+      padding: 8px 16px;
+      margin: 5px;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background-color: #45a049;
+    }
+
+    #messages {
+      margin-top: 20px;
+      padding: 10px;
+      background-color: #f9f9f9;
+      border: 1px solid #ddd;
+    }
+  </style>
+</head>
+<body>
+
+<h2>WebRTC Video Chat</h2>
+
+<div class="video-container">
+  <video id="localVideo" autoplay muted></video>
+  <video id="remoteVideo" autoplay></video>
+</div>
+
+<div class="button-container">
+  <button onclick="startCall()">Start Call</button>
+  <button onclick="stopCall()">Stop Call</button>
+</div>
+
+<div class="group-section">
+  <h3>Create and Join Groups</h3>
+  <input type="text" id="groupName" placeholder="Enter Group Name">
+  <button onclick="createGroup()">Create Group</button>
+
+  <input type="text" id="userNameToAdd" placeholder="Enter User Name to Add">
+  <button onclick="addUserToGroup()">Add User to Group</button>
+
+  <div id="groupList"></div> <!-- Group List -->
+  <div id="messages"></div> <!-- Messages -->
+</div>
+
+<script>
+  var socket = new SockJS('/ws');
+  var stompClient = Stomp.over(socket);
+  var localStream;
+  var localConnection;
+  var remoteConnection;
+
+  // Старт кылуу
+  stompClient.connect({}, function(frame) {
+    console.log('Connected: ' + frame);
+    stompClient.subscribe('/topic/group', function(message) {
+      let group = JSON.parse(message.body);
+      let groupList = document.getElementById("groupList");
+      let groupButton = document.createElement("button");
+      groupButton.classList.add("group-button");
+      groupButton.textContent = group.name;
+      groupButton.onclick = function() {
+        joinGroup(group.name);
+      };
+      groupList.appendChild(groupButton);
+    });
+  });
+
+  // Группа түзүү
+  function createGroup() {
+    var groupName = document.getElementById("groupName").value;
+    if (groupName) {
+      stompClient.send("/app/createGroup", {}, groupName);
+    }
+  }
+
+  // Группага колдонуучуну кошуу
+  function addUserToGroup() {
+    var groupName = document.getElementById("groupName").value;
+    var userName = document.getElementById("userNameToAdd").value;
+    if (groupName && userName) {
+      stompClient.send("/app/addUserToGroup", {}, JSON.stringify({ groupName: groupName, username: userName }));
+    }
+  }
+
+  // Группага кошулуу
+  function joinGroup(groupName) {
+    alert("You have joined the group: " + groupName);
+  }
+
+  // Видеочалууну баштоо
+  function startCall() {
+    navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+            .then(function(stream) {
+              localStream = stream;
+              localVideo.srcObject = stream;
+
+              localConnection = new RTCPeerConnection();
+              remoteConnection = new RTCPeerConnection();
+
+              localStream.getTracks().forEach(track => localConnection.addTrack(track, localStream));
+
+              localConnection.createOffer().then(function(offer) {
+                return localConnection.setLocalDescription(offer);
+              }).then(function() {
+                stompClient.send("/app/sendOffer", {}, JSON.stringify(localConnection.localDescription));
+              });
+
+              remoteConnection.ontrack = function(event) {
+                remoteVideo.srcObject = event.streams[0];
+              };
+            })
+            .catch(function(error) {
+              console.log('Error accessing media devices: ', error);
+            });
+  }
+
+  // Видеочалууну токтотуу
+  function stopCall() {
+    localStream.getTracks().forEach(track => track.stop());
+    localVideo.srcObject = null;
+    remoteConnection.close();
+    remoteVideo.srcObject = null;
+    localConnection.close();
+    console.log("Call stopped.");
+  }
+</script>
+
+</body>
+</html>
